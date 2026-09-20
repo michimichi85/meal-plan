@@ -1,0 +1,12 @@
+{
+  "name": "meal-plan",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Static 2-week meal plan web app (client-side only, localStorage)",
+  "scripts": {
+    "start": "serve -s . -l $PORT"
+  },
+  "dependencies": {
+    "serve": "^14.2.3"
+  }
+}

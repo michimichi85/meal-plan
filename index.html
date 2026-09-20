@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>2週間献立プラン</title>
+<meta name="description" content="2人分・14日間・朝昼夕の献立と、週ごとの買い物リストを自動でまとめる献立アプリ。">
+<meta name="theme-color" content="#FCF1E4">
+<meta name="theme-color" content="#211712" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Ctext y=%27.9em%27 font-size=%2790%27%3E%F0%9F%8D%B1%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#FCF1E4; --bg-glow:#FBE4CE; --surface:#FFFCF7; --surface-alt:#FBEFE0;
+    --border:#F0DCC2; --ink:#4A362B; --ink-soft:#93765F; --ink-faint:#B59E88;
+    --accent:#F0763F; --accent-strong:#D65C2A; --accent-soft:#FBD9C3;
+    --green:#5E9A5A; --green-soft:#DDEED7;
+    --ring:rgba(240,118,63,0.35); --shadow:0 10px 24px -14px rgba(90,58,30,0.35);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#211712; --bg-glow:#2C1D14; --surface:#2A1D16; --surface-alt:#33241A;
+      --border:#43301F; --ink:#F5E7D8; --ink-soft:#C9A889; --ink-faint:#9C826A;
+      --accent:#FF9257; --accent-strong:#FFAB78; --accent-soft:#4A2E1B;
+      --green:#8FCB8A; --green-soft:#283A26;
+      --ring:rgba(255,146,87,0.35); --shadow:0 12px 28px -14px rgba(0,0,0,0.55);
+    }
+  }
+  *{ box-sizing:border-box; }
+  body{
+    margin:0; min-height:100vh; min-height:100dvh;
+    background:radial-gradient(60rem 30rem at 15% -10%, var(--bg-glow), transparent 60%), var(--bg);
+    color:var(--ink);
+    font-family:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{ max-width:34rem; margin:0 auto; padding:2rem 1.1rem 4rem; display:flex; flex-direction:column; gap:1.2rem; }
+  header.app{ display:flex; align-items:center; gap:0.6rem; }
+  header.app .mark{ font-size:1.8rem; line-height:1; }
+  header.app h1{ font-family:"Zen Maru Gothic",sans-serif; font-weight:900; font-size:1.45rem; margin:0; }
+  header.app p{ margin:0.1rem 0 0; font-size:0.8rem; color:var(--ink-soft); }
+  .panel{ background:var(--surface); border:1px solid var(--border); border-radius:1.1rem; box-shadow:var(--shadow); }
+
+  .tabs{ display:grid; grid-template-columns:1fr 1fr; gap:0.4rem; padding:0.35rem; }
+  .tab{
+    border:none; background:transparent; color:var(--ink-soft); font:inherit; font-weight:700;
+    padding:0.65rem 0.5rem; border-radius:0.8rem; cursor:pointer; touch-action:manipulation;
+  }
+  .tab[aria-selected="true"]{ background:var(--accent); color:#fff; }
+  .tab:focus-visible, .wk:focus-visible, .btn:focus-visible, .check input:focus-visible + .box{
+    outline:2px solid var(--accent-strong); outline-offset:2px;
+  }
+
+  .weeks{ display:flex; gap:0.5rem; }
+  .wk{
+    flex:1; border:1.5px solid var(--border); background:var(--surface); color:var(--ink-soft);
+    font:inherit; font-weight:700; border-radius:0.8rem; padding:0.6rem; cursor:pointer;
+  }
+  .wk[aria-pressed="true"]{ border-color:var(--accent); color:var(--accent-strong); background:var(--accent-soft); }
+
+  .startbar{ display:flex; flex-wrap:wrap; align-items:center; gap:0.5rem; font-size:0.8rem; color:var(--ink-soft); padding:0.7rem 0.9rem; }
+  .startbar input[type="date"]{
+    border:1.5px solid var(--border); background:var(--surface-alt); color:var(--ink);
+    border-radius:0.6rem; padding:0.3rem 0.5rem; font:inherit; font-size:0.85rem;
+  }
+  .startbar .warn{ flex-basis:100%; color:var(--accent-strong); }
+
+  .day{ padding:0.9rem 1rem 1rem; }
+  .day.is-today{ border-color:var(--accent); box-shadow:0 0 0 3px var(--ring), var(--shadow); }
+  .day-head{ display:flex; align-items:baseline; gap:0.5rem; margin-bottom:0.5rem; }
+  .day-head h3{ margin:0; font-family:"Zen Maru Gothic",sans-serif; font-size:1.05rem; }
+  .day-head .date{ font-size:0.8rem; color:var(--ink-soft); }
+  .day-head .today{ font-size:0.7rem; background:var(--accent); color:#fff; border-radius:999px; padding:0.1rem 0.5rem; font-weight:700; }
+  .day-head .holiday{ font-size:0.7rem; color:var(--accent-strong); }
+  .meal{ display:grid; grid-template-columns:2.2rem 1fr; gap:0.5rem; padding:0.55rem 0; border-top:1px dashed var(--border); }
+  .meal:first-of-type{ border-top:none; }
+  .slot{
+    font-size:0.72rem; font-weight:700; color:var(--accent-strong); background:var(--accent-soft);
+    border-radius:0.5rem; height:1.6rem; display:flex; align-items:center; justify-content:center;
+  }
+  .meal-name{ font-weight:700; font-size:0.95rem; line-height:1.5; word-break:break-word; }
+  .meal-meta{ font-size:0.76rem; color:var(--ink-soft); margin-top:0.15rem; line-height:1.6; }
+  .time{ display:inline-block; background:var(--surface-alt); border-radius:999px; padding:0 0.5rem; margin-right:0.35rem; font-weight:700; color:var(--ink); }
+  .note{ color:var(--accent-strong); }
+
+  .list-head{ padding:0.8rem 1rem; display:flex; align-items:center; justify-content:space-between; gap:0.6rem; }
+  .list-head .prog{ font-size:0.85rem; color:var(--ink-soft); }
+  .list-head .prog b{ color:var(--accent-strong); font-family:"Zen Maru Gothic",sans-serif; font-size:1.1rem; }
+  .btn{
+    border:1.5px solid var(--border); background:var(--surface-alt); color:var(--ink-soft); font:inherit;
+    font-size:0.78rem; border-radius:0.6rem; padding:0.45rem 0.7rem; cursor:pointer; touch-action:manipulation;
+  }
+  .btn:hover{ border-color:var(--accent); color:var(--accent-strong); }
+  .bar{ height:0.4rem; background:var(--surface-alt); border-radius:999px; overflow:hidden; margin:0 1rem 0.9rem; }
+  .bar > i{ display:block; height:100%; background:var(--green); width:0; transition:width 0.25s ease; }
+
+  .cat{ padding:0.8rem 1rem 0.5rem; }
+  .cat h3{ margin:0 0 0.3rem; font-family:"Zen Maru Gothic",sans-serif; font-size:0.95rem; }
+  .items{ list-style:none; margin:0; padding:0; }
+  .items li{ border-top:1px dashed var(--border); }
+  .items li:first-child{ border-top:none; }
+  .check{ display:flex; align-items:center; gap:0.7rem; padding:0.6rem 0; cursor:pointer; min-height:2.8rem; }
+  .check input{ position:absolute; opacity:0; width:1px; height:1px; }
+  .box{
+    flex-shrink:0; width:1.5rem; height:1.5rem; border-radius:0.45rem; border:2px solid var(--ink-faint);
+    display:flex; align-items:center; justify-content:center; color:#fff; font-size:0.95rem; font-weight:900;
+    transition:background 0.12s ease, border-color 0.12s ease;
+  }
+  .check input:checked + .box{ background:var(--green); border-color:var(--green); }
+  .check input:checked + .box::after{ content:"✓"; }
+  .item-main{ flex:1; min-width:0; }
+  .item-name{ font-weight:700; }
+  .item-sub{ font-size:0.74rem; color:var(--ink-soft); line-height:1.5; }
+  .item-qty{ font-family:"Zen Maru Gothic",sans-serif; font-weight:700; white-space:nowrap; text-align:right; }
+  .item-qty small{ display:block; font-family:"Zen Kaku Gothic New",sans-serif; font-weight:400; font-size:0.7rem; color:var(--ink-soft); }
+  .check input:checked ~ .item-main .item-name{ text-decoration:line-through; color:var(--ink-faint); }
+  .check input:checked ~ .item-qty{ color:var(--ink-faint); }
+
+  .pantry{ padding:0.9rem 1rem; font-size:0.8rem; line-height:1.7; color:var(--ink-soft); }
+  .pantry b{ color:var(--ink); }
+  .hint{ font-size:0.74rem; color:var(--ink-faint); text-align:center; line-height:1.6; padding:0 0.5rem; }
+  .weather{ padding:0.9rem 1rem 1rem; display:flex; flex-direction:column; gap:0.7rem; }
+  .wx-top{ display:flex; align-items:center; gap:0.8rem; }
+  .wx-icon{ font-size:2.3rem; line-height:1; }
+  .wx-main{ flex:1; min-width:0; }
+  .wx-place{ font-size:0.78rem; color:var(--ink-soft); }
+  .wx-temp{ font-family:"Zen Maru Gothic",sans-serif; font-weight:900; font-size:1.6rem; line-height:1.15; }
+  .wx-temp small{ font-size:0.82rem; font-weight:500; color:var(--ink-soft); margin-left:0.35rem; }
+  .wx-detail{ font-size:0.78rem; color:var(--ink-soft); }
+  .wx-days{ display:grid; grid-template-columns:repeat(3,1fr); gap:0.4rem; }
+  .wx-day{ background:var(--surface-alt); border-radius:0.7rem; padding:0.4rem 0.2rem; text-align:center; font-size:0.72rem; color:var(--ink-soft); display:flex; flex-direction:column; gap:0.1rem; }
+  .wx-day .e{ font-size:1.2rem; }
+  .wx-day b{ color:var(--ink); font-weight:700; }
+  .wx-tools{ display:flex; gap:0.4rem; }
+  .wx-tools input{
+    flex:1; min-width:0; border:1.5px solid var(--border); background:var(--surface-alt); color:var(--ink);
+    border-radius:0.6rem; padding:0.4rem 0.6rem; font:inherit; font-size:0.85rem;
+  }
+  .wx-tools input:focus{ outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--ring); }
+  .wx-msg{ font-size:0.78rem; color:var(--ink-soft); min-height:1.1em; }
+  .wx-credit{ font-size:0.68rem; color:var(--ink-faint); }
+  .wx-credit a{ color:inherit; }
+  [hidden]{ display:none !important; }
+
+  @media (max-width:380px){
+    .wrap{ padding:1.4rem 0.7rem 3rem; }
+    header.app h1{ font-size:1.25rem; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="app">
+    <span class="mark" aria-hidden="true">🍱</span>
+    <div>
+      <h1>2週間献立プラン</h1>
+      <p>2人分・朝昼夕の3食(朝は和食)・買い物リスト付き</p>
+    </div>
+  </header>
+
+  <section class="panel weather" id="weather" aria-label="天気予報">
+    <div class="wx-top">
+      <span class="wx-icon" id="wx-icon" aria-hidden="true">⏳</span>
+      <div class="wx-main">
+        <div class="wx-place" id="wx-place">天気を取得中…</div>
+        <div class="wx-temp" id="wx-temp"></div>
+        <div class="wx-detail" id="wx-detail"></div>
+      </div>
+    </div>
+    <div class="wx-days" id="wx-days"></div>
+    <form class="wx-tools" id="wx-form">
+      <input type="text" id="wx-city" placeholder="都市名で変更(例:大阪)" maxlength="30" aria-label="天気を表示する都市名">
+      <button type="submit" class="btn">検索</button>
+      <button type="button" class="btn" id="wx-geo">現在地</button>
+    </form>
+    <div class="wx-msg" id="wx-msg" role="status"></div>
+    <div class="wx-credit">天気データ: <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a></div>
+  </section>
+
+  <div class="panel tabs" role="tablist" aria-label="表示の切り替え">
+    <button type="button" class="tab" role="tab" id="tab-menu" aria-selected="true" aria-controls="view-menu">献立表</button>
+    <button type="button" class="tab" role="tab" id="tab-shop" aria-selected="false" aria-controls="view-shop">買い物リスト</button>
+  </div>
+
+  <div class="weeks" role="group" aria-label="週の切り替え">
+    <button type="button" class="wk" id="wk1" aria-pressed="true">1週目(1〜7日目)</button>
+    <button type="button" class="wk" id="wk2" aria-pressed="false">2週目(8〜14日目)</button>
+  </div>
+
+  <section id="view-menu" role="tabpanel" aria-labelledby="tab-menu">
+    <div class="panel startbar">
+      <label for="start-date">1日目の日付:</label>
+      <input type="date" id="start-date">
+      <span class="warn" id="start-warn" hidden>月曜日から始めると、手の込んだ料理が土日に来る設計になっています。</span>
+    </div>
+    <div id="days" style="display:flex;flex-direction:column;gap:1rem;margin-top:1rem"></div>
+  </section>
+
+  <section id="view-shop" role="tabpanel" aria-labelledby="tab-shop" hidden>
+    <div class="panel">
+      <div class="list-head">
+        <div class="prog" id="prog"></div>
+        <button type="button" class="btn" id="reset-checks">チェックをすべて外す</button>
+      </div>
+      <div class="bar" aria-hidden="true"><i id="bar"></i></div>
+    </div>
+    <div id="shop" style="display:flex;flex-direction:column;gap:1rem;margin-top:1rem"></div>
+    <div class="panel pantry" style="margin-top:1rem">
+      <b>家にある前提の物(リストには出ません)</b><br>
+      米、しょうゆ、みりん、酒、砂糖、塩、こしょう、味噌、ケチャップ、油、ごま油、片栗粉、小麦粉、マヨネーズ、顆粒だし、しょうが・にんにくチューブ
+    </div>
+  </section>
+
+  <p class="hint">量は2人分の合計です。同じ食材は自動で合算し、「買う目安」は売り場の単位に切り上げています。<br>チェックの状態はこの端末のブラウザ内に保存されます。</p>
+</div>
+
+<script>
+(function(){
+  // ---- 食材の分類 ----
+  const CAT_LABEL = { veg:'野菜・きのこ', meat:'肉・魚', egg:'卵・大豆製品・練り物', dry:'乾物・麺・缶詰・その他' };
+  const CAT_ORDER = ['veg','meat','egg','dry'];
+  const CAT = {
+    '小松菜':'veg','キャベツ':'veg','玉ねぎ':'veg','にんじん':'veg','じゃがいも':'veg','長ねぎ':'veg','大根':'veg',
+    'ピーマン':'veg','もやし':'veg','しめじ':'veg','なす':'veg','白菜':'veg','ブロッコリー':'veg',
+    '鶏むね肉':'meat','豚こま切れ肉':'meat','豚ひき肉':'meat','鶏ひき肉':'meat','生鮭':'meat',
+    '卵':'egg','木綿豆腐':'egg','油揚げ':'egg','厚揚げ':'egg','納豆':'egg','ちくわ':'egg',
+    '冷凍うどん':'dry','焼きそば麺':'dry','スパゲッティ':'dry','ツナ缶':'dry','鯖の味噌煮缶':'dry',
+    'カットトマト缶':'dry','カレールウ':'dry','乾燥わかめ':'dry','焼き海苔':'dry','かつお節':'dry'
+  };
+  // 買う目安に切り上げる刻み(売り場の単位)
+  const STEP = { '玉':0.25, '本':0.5, '束':0.5, '株':0.5, 'g':50 };
+
+  // ---- 献立データ(材料は [名前, 量, 単位]。量が null の物は「適量」) ----
+  const W = null;
+  const m = (name, min, ings, note) => ({ name, min, ings: ings || [], note: note || '' });
+  const RICE = 'ご飯・';
+  const DAYS = [
+    // ===== 1週目 =====
+    [ m(RICE+'豆腐とわかめの味噌汁・目玉焼き', 10, [['木綿豆腐',0.5,'丁'],['卵',2,'個'],['乾燥わかめ',W,'']]),
+      m('焼きうどん', 15, [['冷凍うどん',2,'玉'],['豚こま切れ肉',100,'g'],['キャベツ',0.25,'玉'],['にんじん',0.25,'本']]),
+      m('麻婆豆腐+小松菜のおひたし', 25, [['木綿豆腐',1,'丁'],['豚ひき肉',200,'g'],['長ねぎ',0.5,'本'],['小松菜',0.5,'束'],['かつお節',W,'']], '麻婆豆腐は翌日の昼にも使います') ],
+    [ m(RICE+'小松菜と油揚げの味噌汁・納豆', 10, [['小松菜',0.5,'束'],['油揚げ',1,'枚'],['納豆',2,'パック']]),
+      m('麻婆丼(昨夜の残り)', 5, [], '新しく買う食材はありません'),
+      m('鮭のちゃんちゃん焼き', 25, [['生鮭',2,'切れ'],['キャベツ',0.25,'玉'],['玉ねぎ',0.5,'個']]) ],
+    [ m(RICE+'玉ねぎの味噌汁・卵焼き', 12, [['玉ねぎ',0.5,'個'],['卵',2,'個'],['乾燥わかめ',W,'']]),
+      m('焼きそば', 15, [['焼きそば麺',2,'玉'],['豚こま切れ肉',100,'g'],['もやし',1,'袋'],['にんじん',0.25,'本']]),
+      m('鶏むねの照り焼き+キャベツの塩もみ', 25, [['鶏むね肉',300,'g'],['キャベツ',0.25,'玉']]) ],
+    [ m(RICE+'しめじの味噌汁・納豆・焼き海苔', 10, [['しめじ',0.5,'パック'],['納豆',2,'パック'],['焼き海苔',W,'']]),
+      m('卵とじうどん', 15, [['冷凍うどん',2,'玉'],['卵',2,'個'],['長ねぎ',0.25,'本']]),
+      m('豚こまとキャベツの味噌炒め', 20, [['豚こま切れ肉',200,'g'],['キャベツ',0.25,'玉'],['ピーマン',3,'個']]) ],
+    [ m(RICE+'大根と油揚げの味噌汁・卵かけご飯', 10, [['大根',0.25,'本'],['油揚げ',1,'枚'],['卵',2,'個'],['焼き海苔',W,'']]),
+      m('ツナマヨ丼+即席わかめ汁', 8, [['ツナ缶',1,'缶'],['焼き海苔',W,''],['乾燥わかめ',W,'']]),
+      m('親子丼', 20, [['鶏むね肉',300,'g'],['玉ねぎ',1,'個'],['卵',3,'個']]) ],
+    [ m(RICE+'長ねぎとわかめの味噌汁・卵焼き', 12, [['長ねぎ',0.25,'本'],['卵',2,'個'],['乾燥わかめ',W,'']]),
+      m('ちくわ入りチャーハン', 15, [['卵',2,'個'],['ちくわ',4,'本'],['ピーマン',2,'個']]),
+      m('肉じゃが', 50, [['豚こま切れ肉',200,'g'],['じゃがいも',3,'個'],['玉ねぎ',1,'個'],['にんじん',0.5,'本']], '残りは明日の昼に使います') ],
+    [ m(RICE+'わかめの味噌汁・目玉焼き・焼き海苔', 10, [['卵',2,'個'],['焼き海苔',W,''],['乾燥わかめ',W,'']]),
+      m('肉じゃがの卵とじ丼', 10, [['卵',2,'個']]),
+      m('鯖缶と大根の煮物+豆腐としめじの味噌汁', 30, [['鯖の味噌煮缶',1,'缶'],['大根',0.25,'本'],['木綿豆腐',0.5,'丁'],['しめじ',0.5,'パック']]) ],
+    // ===== 2週目 =====
+    [ m(RICE+'なすの味噌汁・納豆', 10, [['なす',1,'本'],['納豆',2,'パック'],['乾燥わかめ',W,'']]),
+      m('鶏そぼろ丼(炒り卵・小松菜のせ)', 15, [['鶏ひき肉',200,'g'],['卵',2,'個'],['小松菜',0.5,'束']]),
+      m('豚こまとなすの味噌炒め', 20, [['豚こま切れ肉',200,'g'],['なす',2,'本'],['ピーマン',2,'個']]) ],
+    [ m(RICE+'小松菜と豆腐の味噌汁・卵焼き', 12, [['小松菜',0.5,'束'],['木綿豆腐',0.5,'丁'],['卵',2,'個']]),
+      m('焼きうどん', 15, [['冷凍うどん',2,'玉'],['豚こま切れ肉',100,'g'],['玉ねぎ',0.5,'個'],['ピーマン',1,'個']]),
+      m('鮭の塩焼き+白菜と油揚げの煮びたし', 25, [['生鮭',2,'切れ'],['白菜',0.25,'玉'],['油揚げ',1,'枚']]) ],
+    [ m(RICE+'白菜の味噌汁・納豆・焼き海苔', 10, [['白菜',0.25,'玉'],['納豆',2,'パック'],['焼き海苔',W,'']]),
+      m('ツナと玉ねぎのパスタ', 15, [['スパゲッティ',200,'g'],['ツナ缶',1,'缶'],['玉ねぎ',0.5,'個']]),
+      m('鶏むねのチキン南蛮風+ブロッコリー', 30, [['鶏むね肉',300,'g'],['卵',1,'個'],['ブロッコリー',0.5,'株']]) ],
+    [ m(RICE+'玉ねぎの味噌汁・目玉焼き・焼き海苔', 10, [['玉ねぎ',0.25,'個'],['卵',2,'個'],['焼き海苔',W,'']]),
+      m('厚揚げと野菜の丼', 15, [['厚揚げ',1,'枚'],['ブロッコリー',0.5,'株'],['玉ねぎ',0.25,'個']]),
+      m('豚こまの生姜焼き+千切りキャベツ', 20, [['豚こま切れ肉',300,'g'],['玉ねぎ',0.5,'個'],['キャベツ',0.25,'玉']], '翌日の昼の分も作ります') ],
+    [ m(RICE+'豆腐と大根の味噌汁・納豆', 12, [['木綿豆腐',0.5,'丁'],['大根',0.25,'本'],['長ねぎ',0.25,'本'],['納豆',2,'パック']]),
+      m('生姜焼き丼(昨夜の残り)', 5, [], '新しく買う食材はありません'),
+      m('鶏むねのトマト煮', 30, [['鶏むね肉',300,'g'],['玉ねぎ',1,'個'],['なす',1,'本'],['カットトマト缶',1,'缶']]) ],
+    [ m(RICE+'長ねぎとわかめの味噌汁・卵焼き', 12, [['卵',2,'個'],['長ねぎ',0.25,'本'],['乾燥わかめ',W,'']]),
+      m('お好み焼き', 30, [['卵',2,'個'],['豚こま切れ肉',100,'g'],['キャベツ',0.5,'玉'],['かつお節',W,'']]),
+      m('豚こま入りカレー', 50, [['豚こま切れ肉',200,'g'],['じゃがいも',2,'個'],['玉ねぎ',1,'個'],['にんじん',0.5,'本'],['カレールウ',0.5,'箱']], '2回分作って明日の昼にも使います') ],
+    [ m(RICE+'キャベツと油揚げの味噌汁・納豆', 10, [['キャベツ',0.25,'玉'],['油揚げ',1,'枚'],['納豆',2,'パック']]),
+      m('カレー(昨夜の残り)', 5, [], '新しく買う食材はありません'),
+      m('揚げ出し豆腐+にんじんしりしり', 35, [['木綿豆腐',1,'丁'],['大根',0.25,'本'],['にんじん',0.5,'本'],['卵',2,'個'],['ツナ缶',1,'缶']]) ]
+  ];
+  const SLOTS = ['朝','昼','夕'];
+  const DOW = ['日','月','火','水','木','金','土'];
+
+  // ---- 保存 ----
+  const K_START = 'meal-plan-start', K_CHECKS = 'meal-plan-checks', K_WEEK = 'meal-plan-week';
+  function lsGet(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
+  function lsSet(k, v){ try{ localStorage.setItem(k, v); }catch(e){} }
+  function pad(n){ return String(n).padStart(2,'0'); }
+  function fmtDate(d){ return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate()); }
+  function parseDate(s){
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s || '');
+    if(!m) return null;
+    const d = new Date(+m[1], +m[2]-1, +m[3]);
+    return isNaN(d.getTime()) ? null : d;
+  }
+  function nextMonday(){
+    const d = new Date(); d.setHours(0,0,0,0);
+    const add = (8 - d.getDay()) % 7;   // 月曜なら今日、それ以外は次の月曜
+    d.setDate(d.getDate() + add);
+    return d;
+  }
+  function esc(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+  let startDate = parseDate(lsGet(K_START)) || nextMonday();
+  let week = lsGet(K_WEEK) === '2' ? 2 : 1;
+  let checks = {};
+  try{ const c = JSON.parse(lsGet(K_CHECKS)); if(c && typeof c === 'object' && !Array.isArray(c)) checks = c; }catch(e){}
+
+  // ---- 数量の表示 ----
+  function fmtQty(q, unit){
+    const whole = Math.floor(q + 1e-9), frac = q - whole;
+    const F = { 0.25:'¼', 0.5:'½', 0.75:'¾' };
+    let s;
+    if(Math.abs(frac) < 1e-9) s = String(whole);
+    else{
+      const key = Math.round(frac * 100) / 100;
+      s = F[key] ? (whole ? whole + F[key] : F[key]) : String(Math.round(q * 100) / 100);
+    }
+    return s + unit;
+  }
+  function buyQty(q, unit){
+    const step = STEP[unit] || 1;
+    return Math.ceil(q / step - 1e-9) * step;
+  }
+
+  // ---- 献立表 ----
+  const daysEl = document.getElementById('days');
+  function renderMenu(){
+    daysEl.innerHTML = '';
+    const todayKey = fmtDate(new Date());
+    const from = (week - 1) * 7;
+    for(let i = from; i < from + 7; i++){
+      const d = new Date(startDate); d.setDate(d.getDate() + i);
+      const dow = d.getDay();
+      const holiday = (dow === 0 || dow === 6);
+      const card = document.createElement('article');
+      card.className = 'panel day' + (fmtDate(d) === todayKey ? ' is-today' : '');
+      let html = '<div class="day-head"><h3>' + (i+1) + '日目</h3><span class="date">' +
+        (d.getMonth()+1) + '/' + d.getDate() + '(' + DOW[dow] + ')</span>' +
+        (fmtDate(d) === todayKey ? '<span class="today">今日</span>' : '') +
+        (holiday ? '<span class="holiday">休日</span>' : '') + '</div>';
+      DAYS[i].forEach((meal, s) => {
+        const main = meal.ings.filter(x => x[1] !== null)
+          .map(x => x[0] + ' ' + fmtQty(x[1], x[2])).join('、');
+        html += '<div class="meal"><span class="slot">' + SLOTS[s] + '</span><div>' +
+          '<div class="meal-name">' + esc(meal.name) + '</div>' +
+          '<div class="meal-meta"><span class="time">' + meal.min + '分</span>' + esc(main) +
+          (meal.note ? '<div class="note">' + esc(meal.note) + '</div>' : '') +
+          '</div></div></div>';
+      });
+      card.innerHTML = html;
+      daysEl.appendChild(card);
+    }
+    const warn = document.getElementById('start-warn');
+    warn.hidden = startDate.getDay() === 1;
+  }
+
+  // ---- 買い物リスト(週ごとに自動で合算) ----
+  const shopEl = document.getElementById('shop');
+  function buildList(w){
+    const map = new Map();
+    const from = (w - 1) * 7;
+    for(let i = from; i < from + 7; i++){
+      DAYS[i].forEach(meal => meal.ings.forEach(([name, qty, unit]) => {
+        const key = name + '|' + unit;
+        if(!map.has(key)) map.set(key, { name, unit, qty: 0, any: false, days: new Set() });
+        const it = map.get(key);
+        if(qty === null) it.any = true; else it.qty += qty;
+        it.days.add(i + 1);
+      }));
+    }
+    return [...map.values()];
+  }
+  function renderShop(){
+    shopEl.innerHTML = '';
+    const items = buildList(week);
+    let total = 0, done = 0;
+    CAT_ORDER.forEach(cat => {
+      const list = items.filter(it => (CAT[it.name] || 'dry') === cat);
+      if(!list.length) return;
+      const box = document.createElement('section');
+      box.className = 'panel cat';
+      let html = '<h3>' + CAT_LABEL[cat] + '</h3><ul class="items">';
+      list.forEach(it => {
+        const id = 'w' + week + '|' + it.name + '|' + it.unit;
+        const on = !!checks[id];
+        total++; if(on) done++;
+        const days = [...it.days].map(n => ((n - 1) % 7) + 1).join('・') + '日目';
+        let qtyHtml;
+        if(it.qty === 0) qtyHtml = '適量';
+        else{
+          const need = fmtQty(it.qty, it.unit);
+          const buy = fmtQty(buyQty(it.qty, it.unit), it.unit);
+          qtyHtml = need + (buy !== need ? '<small>買う目安 ' + buy + '</small>' : '');
+        }
+        html += '<li><label class="check"><input type="checkbox" data-id="' + esc(id) + '"' + (on ? ' checked' : '') + '>' +
+          '<span class="box" aria-hidden="true"></span>' +
+          '<span class="item-main"><span class="item-name">' + esc(it.name) + '</span>' +
+          '<span class="item-sub" style="display:block">使う日: ' + days + (it.qty === 0 ? '(家になければ購入)' : '') + '</span></span>' +
+          '<span class="item-qty">' + qtyHtml + '</span></label></li>';
+      });
+      html += '</ul>';
+      box.innerHTML = html;
+      shopEl.appendChild(box);
+    });
+    updateProgress(done, total);
+  }
+  function updateProgress(done, total){
+    document.getElementById('prog').innerHTML = week + '週目:<b>' + done + '</b> / ' + total + ' 品';
+    document.getElementById('bar').style.width = (total ? Math.round(done / total * 100) : 0) + '%';
+  }
+  shopEl.addEventListener('change', (e) => {
+    const t = e.target;
+    if(!(t instanceof HTMLInputElement) || t.type !== 'checkbox') return;
+    if(t.checked) checks[t.dataset.id] = true; else delete checks[t.dataset.id];
+    lsSet(K_CHECKS, JSON.stringify(checks));
+    const all = shopEl.querySelectorAll('input[type=checkbox]');
+    updateProgress(shopEl.querySelectorAll('input:checked').length, all.length);
+  });
+  document.getElementById('reset-checks').addEventListener('click', () => {
+    Object.keys(checks).forEach(k => { if(k.startsWith('w' + week + '|')) delete checks[k]; });
+    lsSet(K_CHECKS, JSON.stringify(checks));
+    renderShop();
+  });
+
+  // ---- 切り替え ----
+  const tabMenu = document.getElementById('tab-menu'), tabShop = document.getElementById('tab-shop');
+  const viewMenu = document.getElementById('view-menu'), viewShop = document.getElementById('view-shop');
+  function showTab(name){
+    const shop = name === 'shop';
+    tabMenu.setAttribute('aria-selected', String(!shop));
+    tabShop.setAttribute('aria-selected', String(shop));
+    viewMenu.hidden = shop; viewShop.hidden = !shop;
+    if(shop) renderShop(); else renderMenu();
+  }
+  tabMenu.addEventListener('click', () => showTab('menu'));
+  tabShop.addEventListener('click', () => showTab('shop'));
+
+  function setWeek(w){
+    week = w; lsSet(K_WEEK, String(w));
+    document.getElementById('wk1').setAttribute('aria-pressed', String(w === 1));
+    document.getElementById('wk2').setAttribute('aria-pressed', String(w === 2));
+    if(viewShop.hidden) renderMenu(); else renderShop();
+  }
+  document.getElementById('wk1').addEventListener('click', () => setWeek(1));
+  document.getElementById('wk2').addEventListener('click', () => setWeek(2));
+
+  const startInput = document.getElementById('start-date');
+  startInput.value = fmtDate(startDate);
+  startInput.addEventListener('change', () => {
+    const d = parseDate(startInput.value);
+    if(!d) return;
+    startDate = d; lsSet(K_START, fmtDate(d));
+    renderMenu();
+  });
+
+  // ---- 天気予報(Open-Meteo:無料・APIキー不要)----
+  const WX_KEY = 'meal-plan-weather-loc';
+  const WX_DEFAULT = { name: '東京', lat: 35.6895, lon: 139.6917 };
+  const WX_CODES = [
+    [[0],'☀️','快晴'], [[1],'🌤️','晴れ'], [[2],'⛅','くもり時々晴れ'], [[3],'☁️','くもり'],
+    [[45,48],'🌫️','霧'], [[51,53,55,56,57],'🌦️','霧雨'],
+    [[61,63,65,66,67,80,81,82],'🌧️','雨'], [[71,73,75,77,85,86],'❄️','雪'], [[95,96,99],'⛈️','雷雨']
+  ];
+  function wxInfo(code){
+    const hit = WX_CODES.find(r => r[0].includes(code));
+    return hit ? { icon: hit[1], label: hit[2] } : { icon: '🌡️', label: '—' };
+  }
+  function loadWxLoc(){
+    try{
+      const v = JSON.parse(lsGet(WX_KEY));
+      if(v && typeof v.name === 'string' && isFinite(v.lat) && isFinite(v.lon)) return v;
+    }catch(e){}
+    return WX_DEFAULT;
+  }
+  let wxLoc = loadWxLoc();
+  const wxEl = id => document.getElementById(id);
+  const wxMsg = t => { wxEl('wx-msg').textContent = t || ''; };
+  async function fetchJson(url){
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 10000);
+    try{
+      const res = await fetch(url, { signal: ctrl.signal });
+      if(!res.ok) throw new Error('HTTP ' + res.status);
+      return await res.json();
+    } finally { clearTimeout(timer); }
+  }
+  async function loadWeather(){
+    wxEl('wx-place').textContent = wxLoc.name + ' の天気';
+    wxMsg('');
+    try{
+      const url = 'https://api.open-meteo.com/v1/forecast'
+        + '?latitude=' + encodeURIComponent(wxLoc.lat) + '&longitude=' + encodeURIComponent(wxLoc.lon)
+        + '&current=temperature_2m,apparent_temperature,weather_code'
+        + '&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max'
+        + '&timezone=auto&forecast_days=3';
+      const data = await fetchJson(url);
+      const cur = data.current, d = data.daily;
+      if(!cur || !d || !d.time) throw new Error('bad data');
+      const info = wxInfo(cur.weather_code);
+      wxEl('wx-icon').textContent = info.icon;
+      wxEl('wx-temp').innerHTML = Math.round(cur.temperature_2m) + '°C<small>' + esc(info.label) + '</small>';
+      wxEl('wx-detail').textContent = '体感 ' + Math.round(cur.apparent_temperature) + '°C ・ 今日の降水確率 '
+        + (d.precipitation_probability_max[0] ?? '—') + '%';
+      const daysEl2 = wxEl('wx-days');
+      daysEl2.innerHTML = '';
+      d.time.forEach((t, i) => {
+        const dt = new Date(t + 'T00:00:00');
+        const di = wxInfo(d.weather_code[i]);
+        const box = document.createElement('div');
+        box.className = 'wx-day';
+        const label = i === 0 ? '今日' : (i === 1 ? '明日' : (dt.getMonth() + 1) + '/' + dt.getDate() + '(' + DOW[dt.getDay()] + ')');
+        box.innerHTML = '<span>' + esc(label) + '</span><span class="e" aria-hidden="true">' + di.icon + '</span>'
+          + '<span><b>' + Math.round(d.temperature_2m_max[i]) + '°</b> / ' + Math.round(d.temperature_2m_min[i]) + '°</span>'
+          + '<span>☔ ' + (d.precipitation_probability_max[i] ?? '—') + '%</span>';
+        daysEl2.appendChild(box);
+      });
+    }catch(e){
+      wxEl('wx-icon').textContent = '📡';
+      wxEl('wx-temp').textContent = '';
+      wxEl('wx-detail').textContent = '';
+      wxEl('wx-days').innerHTML = '';
+      wxMsg('天気を取得できませんでした。通信状況を確認して、もう一度お試しください。');
+    }
+  }
+  wxEl('wx-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const q = wxEl('wx-city').value.trim();
+    if(!q) return;
+    wxMsg('検索中…');
+    try{
+      const g = await fetchJson('https://geocoding-api.open-meteo.com/v1/search?count=1&language=ja&name=' + encodeURIComponent(q));
+      const r = g.results && g.results[0];
+      if(!r){ wxMsg('「' + q + '」が見つかりませんでした。'); return; }
+      wxLoc = { name: r.name, lat: r.latitude, lon: r.longitude };
+      lsSet(WX_KEY, JSON.stringify(wxLoc));
+      wxEl('wx-city').value = '';
+      loadWeather();
+    }catch(err){ wxMsg('検索に失敗しました。通信状況を確認してください。'); }
+  });
+  wxEl('wx-geo').addEventListener('click', () => {
+    if(!navigator.geolocation){ wxMsg('この端末では現在地を取得できません。'); return; }
+    wxMsg('現在地を取得中…');
+    navigator.geolocation.getCurrentPosition(pos => {
+      wxLoc = { name: '現在地', lat: pos.coords.latitude, lon: pos.coords.longitude };
+      lsSet(WX_KEY, JSON.stringify(wxLoc));
+      loadWeather();
+    }, () => wxMsg('現在地を取得できませんでした(位置情報の許可を確認してください)。'), { timeout: 10000 });
+  });
+  loadWeather();
+  setInterval(() => { if(!document.hidden) loadWeather(); }, 30 * 60 * 1000);
+
+  // 今日が期間内なら、その週を最初に表示する
+  (function pickInitialWeek(){
+    const t = new Date(); t.setHours(0,0,0,0);
+    const diff = Math.round((t - startDate) / 86400000);
+    if(diff >= 0 && diff < 14) week = diff < 7 ? 1 : 2;
+    setWeek(week);
+  })();
+})();
+</script>
+</body>
+</html>
